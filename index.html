@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tank vs Soldiers 🇮🇳</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body {
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: linear-gradient(to bottom, #FF9933 33%, #FFFFFF 33%, #FFFFFF 66%, #138808 66%);
+  }
+  canvas {
+    border: 3px solid #000;
+    border-radius: 10px;
+    background-color: rgba(255,255,255,0.2);
+  }
+  #scoreBoard {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: black;
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #fff;
+    font-family: sans-serif;
+  }
+</style>
+</head>
+<body>
+  <div id="scoreBoard">Score: 0</div>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const scoreBoard = document.getElementById("scoreBoard");
+
+    let tank = { x: 160, y: 540, width: 80, height: 30, speed: 4 };
+    let bullets = [];
+    let soldiers = [];
+    let score = 0;
+    let gameOver = false;
+
+    let keys = {};
+    document.addEventListener("keydown", (e) => keys[e.code] = true);
+    document.addEventListener("keyup", (e) => keys[e.code] = false);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && !gameOver) {
+        bullets.push({ x: tank.x + tank.width / 2 - 2, y: tank.y - 10, width: 4, height: 10 });
+      }
+      if (e.code === "Enter" && gameOver) restartGame();
+    });
+
+    // Draw a more realistic tank
+    function drawTank() {
+      // Tank base
+      ctx.fillStyle = "#2F4F4F";
+      ctx.fillRect(tank.x, tank.y, tank.width, tank.height);
+
+      // Tank tracks
+      ctx.fillStyle = "#000";
+      ctx.fillRect(tank.x, tank.y + 20, tank.width, 10);
+
+      // Turret
+      ctx.fillStyle = "#2F4F4F";
+      ctx.fillRect(tank.x + 25, tank.y - 10, 30, 10);
+
+      // Cannon
+      ctx.fillStyle = "#000";
+      ctx.fillRect(tank.x + 55, tank.y - 15, 25, 5);
+
+      // Hatch
+      ctx.beginPath();
+      ctx.arc(tank.x + 40, tank.y - 5, 6, 0, Math.PI * 2);
+      ctx.fillStyle = "#444";
+      ctx.fill();
+    }
+
+    function drawBullets() {
+      ctx.fillStyle = "#000";
+      bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
+    }
+
+    function drawSoldiers() {
+      soldiers.forEach(s => {
+        // Body
+        ctx.fillStyle = "#b22222";
+        ctx.fillRect(s.x, s.y, s.width, s.height);
+        // Head
+        ctx.beginPath();
+        ctx.arc(s.x + s.width / 2, s.y - 5, 5, 0, Math.PI * 2);
+        ctx.fillStyle = "#000";
+        ctx.fill();
+        // Gun
+        ctx.fillStyle = "#222";
+        ctx.fillRect(s.x + s.width / 2 - 1, s.y + 3, 10, 2);
+      });
+    }
+
+    function updateTank() {
+      if (keys["ArrowLeft"] && tank.x > 0) tank.x -= tank.speed;
+      if (keys["ArrowRight"] && tank.x + tank.width < canvas.width) tank.x += tank.speed;
+    }
+
+    function updateBullets() {
+      bullets.forEach((b, i) => {
+        b.y -= 6;
+        if (b.y < 0) bullets.splice(i, 1);
+      });
+    }
+
+    function spawnSoldiers() {
+      if (Math.random() < 0.015) {
+        soldiers.push({
+          x: Math.random() * 360,
+          y: 0,
+          width: 20,
+          height: 25,
+          speed: 1.5 // slower enemies
+        });
+      }
+    }
+
+    function updateSoldiers() {
+      soldiers.forEach((s, i) => {
+        s.y += s.speed;
+        if (s.y > canvas.height) soldiers.splice(i, 1);
+      });
+    }
+
+    function detectCollisions() {
+      soldiers.forEach((s, si) => {
+        bullets.forEach((b, bi) => {
+          if (
+            b.x < s.x + s.width &&
+            b.x + b.width > s.x &&
+            b.y < s.y + s.height &&
+            b.y + b.height > s.y
+          ) {
+            bullets.splice(bi, 1);
+            soldiers.splice(si, 1);
+            score++;
+            scoreBoard.innerText = "Score: " + score;
+          }
+        });
+
+        // Soldier hits tank
+        if (
+          s.y + s.height >= tank.y &&
+          s.x < tank.x + tank.width &&
+          s.x + s.width > tank.x
+        ) {
+          gameOver = true;
+        }
+      });
+    }
+
+    function restartGame() {
+      score = 0;
+      bullets = [];
+      soldiers = [];
+      gameOver = false;
+      tank.x = 160;
+      scoreBoard.innerText = "Score: 0";
+      loop();
+    }
+
+    function drawGameOver() {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#fff";
+      ctx.font = "28px Arial";
+      ctx.fillText("GAME OVER", 120, 280);
+      ctx.font = "20px Arial";
+      ctx.fillText("Final Score: " + score, 140, 320);
+      ctx.fillText("Press ENTER to Restart", 90, 360);
+    }
+
+    function loop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!gameOver) {
+        updateTank();
+        updateBullets();
+        spawnSoldiers();
+        updateSoldiers();
+        detectCollisions();
+
+        drawTank();
+        drawBullets();
+        drawSoldiers();
+
+        requestAnimationFrame(loop);
+      } else {
+        drawGameOver();
+      }
+    }
+
+    loop();
+  </script>
+</body>
+</html>
